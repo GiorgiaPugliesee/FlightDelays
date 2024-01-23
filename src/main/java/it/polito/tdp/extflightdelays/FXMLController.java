@@ -41,7 +41,18 @@ public class FXMLController {
 
     @FXML
     void doAnalizzaAeroporti(ActionEvent event) {
-
+    	String input = this.compagnieMinimo.getText();
+    	int inputNum = 0;
+    	
+    	try {
+    		inputNum = Integer.parseInt(input);
+    	} catch(NumberFormatException e) {
+    		this.txtResult.setText("Inserire un numero.");
+    		e.getStackTrace();
+    		return;
+    	}
+    	
+    	this.model.creaGrafo(inputNum);
     }
 
     @FXML

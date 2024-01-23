@@ -7,10 +7,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import it.polito.tdp.extflightdelays.model.Airline;
 import it.polito.tdp.extflightdelays.model.Airport;
 import it.polito.tdp.extflightdelays.model.Flight;
+import it.polito.tdp.extflightdelays.model.Rotta;
 
 public class ExtFlightDelaysDAO {
 
@@ -80,6 +82,73 @@ public class ExtFlightDelaysDAO {
 						rs.getDouble("ELAPSED_TIME"), rs.getInt("DISTANCE"),
 						rs.getTimestamp("ARRIVAL_DATE").toLocalDateTime(), rs.getDouble("ARRIVAL_DELAY"));
 				result.add(flight);
+			}
+
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	}
+	
+	public List<Airport> loadAllNodes(int x, Map<Integer, Airport> idMap) {
+		String sql = "SELECT tmp.ID, tmp.IATA_CODE, COUNT(*) AS N "
+				+ "FROM "
+				+ "(SELECT a.ID, a.IATA_CODE, f.AIRLINE_ID, COUNT(*) AS n "
+				+ "FROM flights f, airports a\r\n"
+				+ "WHERE f.ORIGIN_AIRPORT_ID = a.ID OR f.DESTINATION_AIRPORT_ID = a.ID "
+				+ "GROUP BY a.ID, a.IATA_CODE, f.AIRLINE_ID) tmp "
+				+ "GROUP BY tmp.ID, tmp.IATA_CODE "
+				+ "HAVING N > ? ";
+				
+		String query = "SELECT a.ID, a.IATA_CODE "
+				+ "FROM flights f, airports a "
+				+ "WHERE f.ORIGIN_AIRPORT_ID = a.ID OR f.DESTINATION_AIRPORT_ID = a.ID "
+				+ "GROUP BY a.ID, a.IATA_CODE "
+				+ "HAVING COUNT(DISTINCT f.AIRLINE_ID) > ? " ;
+		
+		List<Airport> result = new ArrayList<Airport>();
+
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(query);
+			
+			st.setInt(1, x);
+			
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				result.add(idMap.get(rs.getInt("ID")));
+			}
+
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+		
+	}
+	
+	public List<Rotta> loadAllEdges(Map<Integer, Airport> idMap) {
+		String sql = "SELECT f.ORIGIN_AIRPORT_ID as origin, f.DESTINATION_AIRPORT_ID as destination, COUNT(*) AS n "
+				+ "FROM flights f " 
+				+ "GROUP BY f.ORIGIN_AIRPORT_ID, f.DESTINATION_AIRPORT_ID ";
+		
+		List<Rotta> result = new ArrayList<Rotta>();
+
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				result.add(new Rotta(idMap.get(rs.getInt("origin")), idMap.get(rs.getInt("destination")), rs.getInt("n")));
 			}
 
 			conn.close();
